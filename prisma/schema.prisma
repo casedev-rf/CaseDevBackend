@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Simulação principal
+model Simulation {
+  id           Int                   @id @default(autoincrement())
+  name         String
+  createdAt    DateTime              @default(now())
+  versions     SimulationVersion[]   // Relacionamento 1:N
+}
+
+// Versão de Simulação
+model SimulationVersion {
+  id             Int         @id @default(autoincrement())
+  simulation     Simulation  @relation(fields: [simulationId], references: [id])
+  simulationId   Int
+  status         String      // Vivo, Morto, Inválido
+  startDate      DateTime
+  realRate       Float       // Taxa real composta
+  createdAt      DateTime    @default(now())
+  allocations    Allocation[]
+  events         Event[]
+  insurances     Insurance[]
+}
+
+// Alocação (financeira ou imobilizada)
+model Allocation {
+  id                   Int                  @id @default(autoincrement())
+  simulationVersion    SimulationVersion    @relation(fields: [simulationVersionId], references: [id])
+  simulationVersionId  Int
+  type                 String               // 'financeira' ou 'imobilizada'
+  name                 String
+  value                Float
+  date                 DateTime
+  // Campos para financiamento (opcional)
+  hasFinancing         Boolean?             // true se for imobilizada com financiamento
+  financingStartDate   DateTime?
+  financingInstallments Int?
+  financingRate        Float?
+  financingEntryValue  Float?
+  history              AllocationHistory[]
+}
+
+// Histórico de valores da alocação
+model AllocationHistory {
+  id           Int         @id @default(autoincrement())
+  allocation   Allocation  @relation(fields: [allocationId], references: [id])
+  allocationId Int
+  value        Float
+  date         DateTime
+}
+
+// Movimentação/Eventos
+model Event {
+  id                   Int                  @id @default(autoincrement())
+  simulationVersion    SimulationVersion    @relation(fields: [simulationVersionId], references: [id])
+  simulationVersionId  Int
+  type                 String               // entrada, saída, etc.
+  value                Float
+  frequency            String               // única, mensal, anual
+  startDate            DateTime
+  endDate              DateTime?
+}
+
+// Seguro
+model Insurance {
+  id                   Int                  @id @default(autoincrement())
+  simulationVersion    SimulationVersion    @relation(fields: [simulationVersionId], references: [id])
+  simulationVersionId  Int
+  name                 String
+  startDate            DateTime
+  durationMonths       Int
+  premium              Float                // pagamento mensal
+  insuredValue         Float
+}
