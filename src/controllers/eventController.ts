@@ -1,7 +1,7 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { eventService } from '../services/eventService';
 import { eventCreateSchema } from '../schemas/eventCreateSchema';
+import { eventService } from '../services/eventService';
 import { eventUpdateSchema } from '../schemas/eventUpdateSchema';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 export const eventController = {
   async getAll(request: FastifyRequest, reply: FastifyReply) {
@@ -14,12 +14,13 @@ export const eventController = {
     if (!result) return reply.code(404).send({ message: 'Not found' });
     return reply.send(result);
   },
-  async create(request: FastifyRequest, reply: FastifyReply) {
+  async create(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const simulationId = Number(request.params.id);
     const parseResult = eventCreateSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.code(400).send({ error: parseResult.error.issues });
     }
-    const result = await eventService.create(parseResult.data);
+    const result = await eventService.create(simulationId, parseResult.data);
     return reply.code(201).send(result);
   },
   async update(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {

@@ -8,8 +8,16 @@ export const eventService = {
   async getById(id: number) {
     return prisma.event.findUnique({ where: { id } });
   },
-  async create(data: any) {
-    return prisma.event.create({ data });
+  async create(simulationId: number, data: any) {
+    // Busca a versão mais recente da simulação
+    const version = await prisma.simulationVersion.findFirst({
+      where: { simulationId },
+      orderBy: { startDate: 'desc' }
+    });
+    if (!version) return { error: 'Versão não encontrada' };
+    return prisma.event.create({
+      data: { ...data, simulationVersionId: version.id }
+    });
   },
   async update(id: number, data: any) {
     const event = await prisma.event.findUnique({ where: { id } });

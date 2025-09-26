@@ -1,7 +1,7 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { allocationService } from '../services/allocationService';
 import { allocationCreateSchema } from '../schemas/allocationCreateSchema';
+import { allocationService } from '../services/allocationService';
 import { allocationUpdateSchema } from '../schemas/allocationUpdateSchema';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 export const allocationController = {
   async getAll(request: FastifyRequest, reply: FastifyReply) {
@@ -39,5 +39,5 @@ export const allocationController = {
     const id = Number(request.params.id);
     await allocationService.remove(id);
     return reply.code(204).send();
-  }
+  },
 };

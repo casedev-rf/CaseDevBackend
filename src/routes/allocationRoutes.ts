@@ -1,5 +1,5 @@
-import { FastifyInstance } from 'fastify';
 import { allocationController } from '../controllers/allocationController';
+import { FastifyInstance } from 'fastify';
 
 export async function allocationRoutes(fastify: FastifyInstance) {
   fastify.get('/allocations', allocationController.getAll);

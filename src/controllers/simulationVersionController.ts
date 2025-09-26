@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { simulationVersionService } from '../services/simulationVersionService';
 import { simulationVersionCreateSchema } from '../schemas/simulationVersionCreateSchema';
+import { simulationVersionService } from '../services/simulationVersionService';
 import { simulationVersionUpdateSchema } from '../schemas/simulationVersionUpdateSchema';
 
 export const simulationVersionController = {

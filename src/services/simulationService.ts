@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-
 const prisma = new PrismaClient();
 
 export const simulationService = {
@@ -28,9 +27,6 @@ export const simulationService = {
     if (!simulation) {
       return { error: 'Simulação não encontrada.' };
     }
-    if (!simulation) {
-      return { error: 'Simulação não encontrada.' };
-    }
     await prisma.simulation.delete({ where: { id } });
     return { message: `Simulação ${id} deletada com sucesso.` };
   },
@@ -51,7 +47,9 @@ export const simulationService = {
       }
     });
 
-    if (!simulation || simulation.versions.length === 0) return { error: 'Simulation/version not found' };
+    if (!simulation || !simulation.versions || simulation.versions.length === 0) {
+      return { error: 'Simulation/version not found' };
+    }
 
     const version = simulation.versions[0];
     if (!version) return { error: 'Versão não encontrada' };
@@ -64,9 +62,13 @@ export const simulationService = {
     const startDate = new Date(version.startDate);
 
     // Para cada ativo (nome), pegue o registro mais recente antes da data de início
-    const ativosUnicos: string[] = Array.from(new Set(version.allocations.map((a: any) => a.name)));
+    const allocations = (version.allocations ?? []) as any[];
+    const events = (version.events ?? []) as any[];
+    const insurances = (version.insurances ?? []) as any[];
+
+    const ativosUnicos: string[] = Array.from(new Set(allocations.map((a: any) => a.name)));
     let saldo = ativosUnicos.reduce((acc: number, nomeAtivo: string) => {
-      const registros = version.allocations
+      const registros = allocations
         .filter((a: any) => a.name === nomeAtivo && new Date(a.date) <= startDate)
         .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       if (registros.length > 0) {
@@ -80,7 +82,7 @@ export const simulationService = {
         let entradas = 0;
         let saidas = 0;
 
-        version.events.forEach((event: any) => {
+        events.forEach((event: any) => {
           const eventStart = new Date(event.startDate).getFullYear();
           const eventEnd = event.endDate ? new Date(event.endDate).getFullYear() : endYear;
 
@@ -98,7 +100,7 @@ export const simulationService = {
           }
         });
 
-        let premioSeguros = version.insurances.reduce((acc: number, ins: any) => {
+        let premioSeguros = insurances.reduce((acc: number, ins: any) => {
           const inicio = new Date(ins.startDate).getFullYear();
           const fim = inicio + (ins.durationMonths ? Math.floor(ins.durationMonths / 12) : 0);
           if (year >= inicio && year <= fim) {
@@ -127,7 +129,12 @@ export const simulationService = {
   },
 
   async duplicate(simulationId: number, newName: string) {
-    const existing = await prisma.simulation.findUnique({ where: { name: newName } });
+    const existing = await prisma.simulation.findFirst({
+      where: {
+        name: newName,
+        NOT: { id: simulationId }
+      }
+    });
     if (existing) return { error: 'Já existe uma simulação com esse nome.' };
     // 1. Buscar simulação e dados relacionados
     const simulation = await prisma.simulation.findUnique({
@@ -159,7 +166,7 @@ export const simulationService = {
         startDate: version.startDate,
         realRate: version.realRate,
         allocations: {
-          create: version.allocations.map((a: any) => ({
+          create: (version.allocations ?? []).map((a: any) => ({
             type: a.type,
             name: a.name,
             value: a.value,
@@ -172,7 +179,7 @@ export const simulationService = {
           }))
         },
         events: {
-          create: version.events.map((e: any) => ({
+          create: (version.events ?? []).map((e: any) => ({
             type: e.type,
             value: e.value,
             frequency: e.frequency,
@@ -181,7 +188,7 @@ export const simulationService = {
           }))
         },
         insurances: {
-          create: version.insurances.map((i: any) => ({
+          create: (version.insurances ?? []).map((i: any) => ({
             name: i.name,
             startDate: i.startDate,
             durationMonths: i.durationMonths,
@@ -206,16 +213,16 @@ export const simulationService = {
     });
     // Para cada simulação, pega só a versão mais recente
     const result = simulations.map((sim: {
-        versions: any[];
-        [key: string]: any;
-      }) => {
-      const [latestVersion, ...legacyVersions] = sim.versions;
-      return {
-        ...sim,
-        versions: latestVersion ? [latestVersion] : [],
-        legacyVersions
-      };
-    });
+      versions: any[];
+      [key: string]: any;
+    }) => {
+    const [latestVersion, ...legacyVersions] = (sim.versions ?? []);
+    return {
+      ...sim,
+      versions: latestVersion ? [latestVersion] : [],
+      legacyVersions
+    };
+  });
     return result;
   }
 };
