@@ -210,19 +210,19 @@ export const simulationService = {
           orderBy: { startDate: 'desc' }
         }
       }
+      });
+      // Para cada simulação, pega só a versão mais recente
+      const result = simulations.map((sim: {
+        versions: any[];
+        [key: string]: any;
+      }) => {
+      const [latestVersion, ...legacyVersions] = (sim.versions ?? []);
+      return {
+        ...sim,
+        versions: latestVersion ? [latestVersion] : [],
+        legacyVersions
+      };
     });
-    // Para cada simulação, pega só a versão mais recente
-    const result = simulations.map((sim: {
-      versions: any[];
-      [key: string]: any;
-    }) => {
-    const [latestVersion, ...legacyVersions] = (sim.versions ?? []);
-    return {
-      ...sim,
-      versions: latestVersion ? [latestVersion] : [],
-      legacyVersions
-    };
-  });
     return result;
-  }
+  }, 
 };
