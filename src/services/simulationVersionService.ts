@@ -12,9 +12,18 @@ export const simulationVersionService = {
     return prisma.simulationVersion.create({ data });
   },
   async update(id: number, data: any) {
+    const version = await prisma.simulationVersion.findUnique({ where: { id } });
+    if (!version) {
+      return { error: 'Versão não encontrada.' };
+    }
     return prisma.simulationVersion.update({ where: { id }, data });
   },
   async remove(id: number) {
-    return prisma.simulationVersion.delete({ where: { id } });
+    const version = await prisma.simulationVersion.findUnique({ where: { id } });
+    if (!version) {
+      return { error: 'Versão não encontrada.' };
+    }
+    await prisma.simulationVersion.delete({ where: { id } });
+    return { message: `Versão ${id} deletada com sucesso.` };
   }
 };

@@ -16,11 +16,23 @@ export const simulationService = {
   },
 
   async update(id: number, data: { name?: string | undefined }) {
-    return prisma.simulation.update({ where: { id }, data });
+    const updateData: { name?: string } = {};
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+    return prisma.simulation.update({ where: { id }, data: updateData });
   },
 
   async remove(id: number) {
-    return prisma.simulation.delete({ where: { id } });
+    const simulation = await prisma.simulation.findUnique({ where: { id } });
+    if (!simulation) {
+      return { error: 'Simulação não encontrada.' };
+    }
+    if (!simulation) {
+      return { error: 'Simulação não encontrada.' };
+    }
+    await prisma.simulation.delete({ where: { id } });
+    return { message: `Simulação ${id} deletada com sucesso.` };
   },
 
   async projection(simulationId: number, status: 'Vivo' | 'Morto' | 'Inválido' = 'Vivo') {
@@ -42,49 +54,81 @@ export const simulationService = {
     if (!simulation || simulation.versions.length === 0) return { error: 'Simulation/version not found' };
 
     const version = simulation.versions[0];
+    if (!version) return { error: 'Versão não encontrada' };
+
     const startYear = new Date(version.startDate).getFullYear();
     const endYear = 2060;
     const taxaReal = version.realRate ?? 4;
 
     // 1. Ponto inicial: valor dos ativos mais recentes antes da data de início
-    let saldo = version.allocations.reduce((acc: number, alloc: { value: number }) => acc + alloc.value, 0);
+    const startDate = new Date(version.startDate);
+
+    // Para cada ativo (nome), pegue o registro mais recente antes da data de início
+    const ativosUnicos: string[] = Array.from(new Set(version.allocations.map((a: any) => a.name)));
+    let saldo = ativosUnicos.reduce((acc: number, nomeAtivo: string) => {
+      const registros = version.allocations
+        .filter((a: any) => a.name === nomeAtivo && new Date(a.date) <= startDate)
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      if (registros.length > 0) {
+        return acc + registros[0].value;
+      }
+      return acc;
+    }, 0);
 
     const projection = [];
-    for (let year = startYear; year <= endYear; year++) {
-      // 2. Entradas e saídas do ano
-      let entradas = 0;
-      let saidas = 0;
+      for (let year = startYear; year <= endYear; year++) {
+        let entradas = 0;
+        let saidas = 0;
 
-      version.events.forEach((event: { type: string; value: number }) => {
-        // Exemplo: eventos do tipo 'entrada' ou 'saida', frequência, etc.
-        if (event.type === 'entrada') entradas += event.value;
-        if (event.type === 'saida') saidas += event.value;
-      });
+        version.events.forEach((event: any) => {
+          const eventStart = new Date(event.startDate).getFullYear();
+          const eventEnd = event.endDate ? new Date(event.endDate).getFullYear() : endYear;
 
-      // 3. Prêmios de seguros
-      let premioSeguros = version.insurances.reduce((acc: number, ins: { premium?: number }) => acc + (ins.premium ?? 0) * 12, 0);
+          if (year >= eventStart && year <= eventEnd) {
+            if (event.type === 'entrada') {
+              if (event.frequency === 'mensal') entradas += event.value * 12;
+              else if (event.frequency === 'anual') entradas += event.value;
+              else entradas += event.value;
+            }
+            if (event.type === 'saida') {
+              if (event.frequency === 'mensal') saidas += event.value * 12;
+              else if (event.frequency === 'anual') saidas += event.value;
+              else saidas += event.value;
+            }
+          }
+        });
 
-      // 4. Regras de status
-      if (status === 'Morto') {
-        entradas = 0;
-        saidas = saidas / 2;
+        let premioSeguros = version.insurances.reduce((acc: number, ins: any) => {
+          const inicio = new Date(ins.startDate).getFullYear();
+          const fim = inicio + (ins.durationMonths ? Math.floor(ins.durationMonths / 12) : 0);
+          if (year >= inicio && year <= fim) {
+            return acc + (ins.premium ?? 0) * 12;
+          }
+          return acc;
+        }, 0);
+
+        // Regras de status
+        if (status === 'Morto') {
+          entradas = 0;
+          saidas = saidas / 2;
+        }
+        if (status === 'Inválido') {
+          entradas = 0;
+          // saidas normais
+        }
+
+        saldo = saldo + entradas - saidas - premioSeguros;
+        saldo = saldo * (1 + taxaReal / 100);
+
+        projection.push({ year, saldo });
       }
-      if (status === 'Inválido') {
-        entradas = 0;
-        // saidas normais
-      }
-
-      // 5. Atualiza saldo
-      saldo = saldo + entradas - saidas - premioSeguros;
-      saldo = saldo * (1 + taxaReal / 100);
-
-      projection.push({ year, saldo });
-    }
 
     return { simulationId, status, projection };
   },
 
   async duplicate(simulationId: number, newName: string) {
+    const existing = await prisma.simulation.findUnique({ where: { name: newName } });
+    if (existing) return { error: 'Já existe uma simulação com esse nome.' };
     // 1. Buscar simulação e dados relacionados
     const simulation = await prisma.simulation.findUnique({
       where: { id: simulationId },
@@ -108,69 +152,70 @@ export const simulationService = {
 
     // 3. Copiar versões e entidades relacionadas
     for (const version of simulation.versions) {
-      const newVersion = await prisma.simulationVersion.create({
-        data: {
-          simulationId: newSimulation.id,
-          status: version.status,
-          startDate: version.startDate,
-          realRate: version.realRate,
-          allocations: {
-            create: version.allocations.map((a: {
-              type: string;
-              name: string;
-              value: number;
-              date: Date;
-              hasFinancing?: boolean;
-              financingStartDate?: Date;
-              financingInstallments?: number;
-              financingRate?: number;
-              financingEntryValue?: number;
-            }) => ({
-              type: a.type,
-              name: a.name,
-              value: a.value,
-              date: a.date,
-              hasFinancing: a.hasFinancing,
-              financingStartDate: a.financingStartDate,
-              financingInstallments: a.financingInstallments,
-              financingRate: a.financingRate,
-              financingEntryValue: a.financingEntryValue
-            }))
-          },
-          events: {
-            create: version.events.map((e: {
-              type: string;
-              value: number;
-              frequency: string;
-              startDate: Date;
-              endDate?: Date;
-            }) => ({
-              type: e.type,
-              value: e.value,
-              frequency: e.frequency,
-              startDate: e.startDate,
-              endDate: e.endDate
-            }))
-          },
-          insurances: {
-            create: version.insurances.map((i: {
-              name: string;
-              startDate: Date;
-              durationMonths: number;
-              premium: number;
-              insuredValue: number;
-            }) => ({
-              name: i.name,
-              startDate: i.startDate,
-              durationMonths: i.durationMonths,
-              premium: i.premium,
-              insuredValue: i.insuredValue
-            }))
-          }
-        }
-      });
-    }
-
+    const newVersion = await prisma.simulationVersion.create({
+      data: {
+        simulationId: newSimulation.id,
+        status: version.status,
+        startDate: version.startDate,
+        realRate: version.realRate,
+        allocations: {
+          create: version.allocations.map((a: any) => ({
+            type: a.type,
+            name: a.name,
+            value: a.value,
+            date: a.date,
+            hasFinancing: a.hasFinancing ?? null,
+            financingStartDate: a.financingStartDate ?? null,
+            financingInstallments: a.financingInstallments ?? null,
+            financingRate: a.financingRate ?? null,
+            financingEntryValue: a.financingEntryValue ?? null
+          }))
+        },
+        events: {
+          create: version.events.map((e: any) => ({
+            type: e.type,
+            value: e.value,
+            frequency: e.frequency,
+            startDate: e.startDate,
+            endDate: e.endDate ?? null
+          }))
+        },
+        insurances: {
+          create: version.insurances.map((i: any) => ({
+            name: i.name,
+            startDate: i.startDate,
+            durationMonths: i.durationMonths,
+            premium: i.premium,
+            insuredValue: i.insuredValue
+          }))
+        },
+      }
+    });
+  }
     return { newSimulationId: newSimulation.id };
+  },
+
+  async getAllRecentVersions() {
+    // Busca todas as simulações
+    const simulations = await prisma.simulation.findMany({
+      include: {
+        versions: {
+          orderBy: { startDate: 'desc' }
+        }
+      }
+    });
+    // Para cada simulação, pega só a versão mais recente
+    const result = simulations.map((sim: {
+        versions: any[];
+        [key: string]: any;
+      }) => {
+      const [latestVersion, ...legacyVersions] = sim.versions;
+      return {
+        ...sim,
+        versions: latestVersion ? [latestVersion] : [],
+        legacyVersions
+      };
+    });
+    return result;
   }
 };

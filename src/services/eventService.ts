@@ -12,9 +12,18 @@ export const eventService = {
     return prisma.event.create({ data });
   },
   async update(id: number, data: any) {
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) {
+      return { error: 'Evento não encontrado.' };
+    }
     return prisma.event.update({ where: { id }, data });
   },
   async remove(id: number) {
-    return prisma.event.delete({ where: { id } });
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) {
+      return { error: 'Evento não encontrado.' };
+    }
+    await prisma.event.delete({ where: { id } });
+    return { message: `Evento ${id} deletado com sucesso.` };
   }
 };

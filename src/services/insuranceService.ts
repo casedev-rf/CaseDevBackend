@@ -12,9 +12,18 @@ export const insuranceService = {
     return prisma.insurance.create({ data });
   },
   async update(id: number, data: any) {
+    const insurance = await prisma.insurance.findUnique({ where: { id } });
+    if (!insurance) {
+      return { error: 'Seguro não encontrado.' };
+    }
     return prisma.insurance.update({ where: { id }, data });
   },
   async remove(id: number) {
-    return prisma.insurance.delete({ where: { id } });
+    const insurance = await prisma.insurance.findUnique({ where: { id } });
+    if (!insurance) {
+      return { error: 'Seguro não encontrado.' };
+    }
+    await prisma.insurance.delete({ where: { id } });
+    return { message: `Seguro ${id} deletado com sucesso.` };
   }
 };

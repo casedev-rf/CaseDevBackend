@@ -12,9 +12,18 @@ export const allocationService = {
     return prisma.allocation.create({ data });
   },
   async update(id: number, data: any) {
+    const allocation = await prisma.allocation.findUnique({ where: { id } });
+    if (!allocation) {
+      return { error: 'Alocação não encontrada.' };
+    }
     return prisma.allocation.update({ where: { id }, data });
   },
-  async remove(id: number) {
-    return prisma.allocation.delete({ where: { id } });
+  async removeAllocation(id: number) {
+    const allocation = await prisma.allocation.findUnique({ where: { id } });
+    if (!allocation) {
+      return { error: 'Alocação não encontrada.' };
+    }
+    await prisma.allocation.delete({ where: { id } });
+    return { message: `Alocação ${id} deletada com sucesso.` };
   }
 };
