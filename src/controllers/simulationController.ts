@@ -46,4 +46,11 @@ export const simulationController = {
     const result = await simulationService.projection(id);
     return reply.send(result);
   },
+  
+  async duplicate(request: FastifyRequest<{ Params: { id: string }; Body: { name: string } }>, reply: FastifyReply) {
+  const id = Number(request.params.id);
+  const { name } = request.body;
+  const result = await simulationService.duplicate(id, name);
+  return reply.code(201).send(result);
+}
 };

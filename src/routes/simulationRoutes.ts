@@ -8,4 +8,5 @@ export async function simulationRoutes(fastify: FastifyInstance) {
   fastify.put('/simulations/:id', simulationController.update);
   fastify.delete('/simulations/:id', simulationController.remove);
   fastify.post('/simulations/:id/projection', simulationController.projection);
+  fastify.post('/simulations/:id/duplicate', simulationController.duplicate);
 }
