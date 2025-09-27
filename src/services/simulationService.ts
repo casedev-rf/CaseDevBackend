@@ -27,6 +27,8 @@ export const simulationService = {
     if (!simulation) {
       return { error: 'Simulação não encontrada.' };
     }
+    // Deleta todas as versões antes de deletar a simulação
+    await prisma.simulationVersion.deleteMany({ where: { simulationId: id } });
     await prisma.simulation.delete({ where: { id } });
     return { message: `Simulação ${id} deletada com sucesso.` };
   },

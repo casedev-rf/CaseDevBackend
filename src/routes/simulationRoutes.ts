@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { simulationController } from '../controllers/simulationController';
 import { simulationCreateSchema } from '../schemas/simulationCreateSchema';
-import { simulationUpdateSchema } from '../schemas/simulationUpdateSchema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export async function simulationRoutes(fastify: FastifyInstance) {
@@ -144,6 +143,18 @@ export async function simulationRoutes(fastify: FastifyInstance) {
           type: 'object',
           properties: {
             newSimulationId: { type: 'number' }
+          }
+        },
+        409: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
           }
         }
       }

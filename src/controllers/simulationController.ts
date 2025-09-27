@@ -47,13 +47,19 @@ export const simulationController = {
     return reply.send(result);
   },
 
-  async duplicate(request: FastifyRequest<{ Params: { id: string }; Body: { name: string } }>, reply: FastifyReply) {
+  async duplicate(
+    request: FastifyRequest<{ Params: { id: string }; Body: { name: string } }>,
+    reply: FastifyReply
+  ) {
     const id = Number(request.params.id);
     const { name } = request.body;
     const result = await simulationService.duplicate(id, name);
+    if ('error' in result) {
+      return reply.code(409).send(result);
+    }
     return reply.code(201).send(result);
   },
-
+  
   async getAllRecent(request: FastifyRequest, reply: FastifyReply) {
     const simulations = await simulationService.getAllRecentVersions();
     return reply.send(simulations);
