@@ -4,6 +4,28 @@ import { simulationCreateSchema } from '../schemas/simulationCreateSchema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export async function simulationRoutes(fastify: FastifyInstance) {
+  fastify.post('/simulations/:id/current', {
+    schema: {
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id']
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            simulationId: { type: 'number' },
+            isCurrent: { type: 'boolean' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: { error: { type: 'string' } }
+        }
+      }
+    }
+  }, simulationController.createCurrent);
   fastify.post('/simulations', {
     schema: {
       body: zodToJsonSchema(simulationCreateSchema),

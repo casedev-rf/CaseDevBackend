@@ -4,6 +4,15 @@ import { simulationService } from '../services/simulationService';
 import { simulationUpdateSchema } from '../schemas/simulationUpdateSchema';
 
 export const simulationController = {
+  async createCurrent(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const id = Number(request.params.id);
+    const result = await simulationService.createCurrent(id);
+    if ('error' in result) {
+      return reply.code(400).send(result);
+    }
+    return reply.code(201).send(result);
+  },
+  
   async getAll(request: FastifyRequest, reply: FastifyReply) {
     const simulations = await simulationService.getAll();
     return reply.send(simulations);

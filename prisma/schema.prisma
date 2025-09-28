@@ -24,6 +24,7 @@ model SimulationVersion {
   startDate      DateTime
   realRate       Float       // Taxa real composta
   createdAt      DateTime    @default(now())
+  isCurrent      Boolean     @default(false)
   allocations    Allocation[]
   events         Event[]
   insurances     Insurance[]

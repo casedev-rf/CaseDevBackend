@@ -2,6 +2,73 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const simulationService = {
+  async createCurrent(simulationId: number) {
+    // Busca a simulação principal (menor ID entre as mais recentes de cada nome)
+    const allSimulations = await prisma.simulation.findMany({
+      include: {
+        versions: {
+          orderBy: { startDate: 'desc' },
+          include: {
+            allocations: true,
+            events: true,
+            insurances: true
+          }
+        }
+      }
+    });
+    const target = allSimulations.find((s: any) => s.id === simulationId);
+    if (!target) return { error: 'Simulation not found' };
+    // Verifica se já existe uma versão "current" para essa simulação
+    const alreadyCurrent = target.versions.find((v: any) => v.isCurrent);
+    if (alreadyCurrent) return { error: 'Current version already exists for this simulation.' };
+
+    // Cria uma nova versão com data de início = hoje, status = "Vivo", flag isCurrent
+    const today = new Date();
+    const latestVersion = target.versions[0];
+    if (!latestVersion) return { error: 'No version found to base current situation.' };
+
+    await prisma.simulationVersion.create({
+      data: {
+        simulationId: target.id,
+        status: 'Vivo',
+        startDate: today.toISOString(),
+        realRate: latestVersion.realRate,
+        isCurrent: true,
+        allocations: {
+          create: (latestVersion.allocations ?? []).map((a: any) => ({
+            type: a.type,
+            name: a.name,
+            value: a.value,
+            date: a.date,
+            hasFinancing: a.hasFinancing ?? null,
+            financingStartDate: a.financingStartDate ?? null,
+            financingInstallments: a.financingInstallments ?? null,
+            financingRate: a.financingRate ?? null,
+            financingEntryValue: a.financingEntryValue ?? null
+          }))
+        },
+        events: {
+          create: (latestVersion.events ?? []).map((e: any) => ({
+            type: e.type,
+            value: e.value,
+            frequency: e.frequency,
+            startDate: e.startDate,
+            endDate: e.endDate ?? null
+          }))
+        },
+        insurances: {
+          create: (latestVersion.insurances ?? []).map((i: any) => ({
+            name: i.name,
+            startDate: i.startDate,
+            durationMonths: i.durationMonths,
+            premium: i.premium,
+            insuredValue: i.insuredValue
+          }))
+        }
+      }
+    });
+    return { simulationId: target.id, isCurrent: true };
+  },
   async getAll() {
     return prisma.simulation.findMany();
   },
