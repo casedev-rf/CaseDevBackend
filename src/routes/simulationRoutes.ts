@@ -182,6 +182,44 @@ export async function simulationRoutes(fastify: FastifyInstance) {
       }
     }
   }, simulationController.duplicate);
+  
+  fastify.post('/simulations/:id/projection', {
+    schema: {
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id']
+      },
+      body: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['Vivo', 'Morto', 'Inválido'] }
+        },
+        required: ['status']
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            projection: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  year: { type: 'number' },
+                  totalPatrimony: { type: 'number' },
+                  financialPatrimony: { type: 'number' },
+                  immobilizedPatrimony: { type: 'number' },
+                  totalWithoutInsurance: { type: 'number' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, simulationController.projection);
+  
   fastify.get('/simulations/recent', {
     schema: {
       response: {

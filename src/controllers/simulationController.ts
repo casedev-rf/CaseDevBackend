@@ -50,10 +50,20 @@ export const simulationController = {
     return reply.code(204).send();
   },
 
-  async projection(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  async projection(request: FastifyRequest<{ 
+    Params: { id: string }, 
+    Body: { status: 'Vivo' | 'Morto' | 'Inválido' } 
+  }>, reply: FastifyReply) {
     const id = Number(request.params.id);
-    const result = await simulationService.projection(id);
-    return reply.send(result);
+    const { status } = request.body;
+    
+    try {
+      const result = await simulationService.projection(id, status);
+      return reply.send(result);
+    } catch (error) {
+      console.error('Erro ao gerar projeção:', error);
+      return reply.code(500).send({ error: 'Erro interno do servidor' });
+    }
   },
 
   async duplicate(

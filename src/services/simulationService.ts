@@ -191,7 +191,19 @@ export const simulationService = {
         saldo = saldo + entradas - saidas - premioSeguros;
         saldo = saldo * (1 + taxaReal / 100);
 
-        projection.push({ year, saldo });
+        // Calcular divisão por tipo de ativo (estimativa)
+        const totalPatrimony = Math.round(saldo);
+        const financialPatrimony = Math.round(saldo * 0.7); // 70% financeiro
+        const immobilizedPatrimony = Math.round(saldo * 0.3); // 30% imobilizado
+        const totalWithoutInsurance = Math.round(saldo * 0.9); // 90% sem seguros
+
+        projection.push({ 
+          year, 
+          totalPatrimony,
+          financialPatrimony,
+          immobilizedPatrimony,
+          totalWithoutInsurance
+        });
       }
 
     return { simulationId, status, projection };
@@ -293,5 +305,5 @@ export const simulationService = {
       };
     });
     return result;
-  }, 
+  }
 };
