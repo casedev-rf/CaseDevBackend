@@ -6,8 +6,17 @@ import { simulationVersionRoutes } from './routes/simulationVersionRoutes';
 import Fastify from 'fastify';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import cors from '@fastify/cors';
 
 const fastify = Fastify();
+
+// Configurar CORS para aceitar requisições do frontend
+fastify.register(cors, {
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+});
 
 fastify.register(swagger, {
   openapi: {
