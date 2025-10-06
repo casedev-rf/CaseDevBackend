@@ -54,14 +54,44 @@ export const simulationController = {
     Params: { id: string }, 
     Body: { status: 'Vivo' | 'Morto' | 'Inválido' } 
   }>, reply: FastifyReply) {
+    console.log('🚀🚀🚀 CONTROLLER EXECUTANDO!!! 🚀🚀🚀');
     const id = Number(request.params.id);
     const { status } = request.body;
     
+    console.log('🚀 CONTROLLER: Recebendo request de projeção:', { id, status, body: request.body, params: request.params });
+    
     try {
       const result = await simulationService.projection(id, status);
+      console.log('🚀 CONTROLLER: Resultado do service:', {
+        hasResult: !!result,
+        resultKeys: result ? Object.keys(result) : [],
+        projectionLength: result?.projection?.length || 0,
+        firstProjectionItem: result?.projection?.[0] || null
+      });
+      
+      // 🔍 TESTE DE SERIALIZAÇÃO JSON
+      if (result && result.projection && result.projection.length > 0) {
+        const firstItem = result.projection[0];
+        if (firstItem) {
+          console.log('🔍 CONTROLLER: Primeiro objeto antes de enviar:');
+          console.log('   - Keys:', Object.keys(firstItem));
+          console.log('   - Values:', Object.values(firstItem));
+          console.log('   - JSON.stringify:', JSON.stringify(firstItem));
+          console.log('   - Objeto completo:', firstItem);
+          
+          // Teste de serialização/deserialização
+          const testSerialization = JSON.stringify(firstItem);
+          const testDeserialization = JSON.parse(testSerialization);
+          console.log('🧪 CONTROLLER: Teste serialização/deserialização:');
+          console.log('   - Serialized:', testSerialization);
+          console.log('   - Deserialized keys:', Object.keys(testDeserialization));
+          console.log('   - Deserialized values:', Object.values(testDeserialization));
+        }
+      }
+      
       return reply.send(result);
     } catch (error) {
-      console.error('Erro ao gerar projeção:', error);
+      console.error('❌ CONTROLLER: Erro ao gerar projeção:', error);
       return reply.code(500).send({ error: 'Erro interno do servidor' });
     }
   },
